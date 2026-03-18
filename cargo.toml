@@ -1,0 +1,25 @@
+[package]
+name = "colorbotbase"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lazy_static = "1.4.0"
+libloading = "0.8.0"
+rand = "0.8.5"
+opencv = "0.94.1" # i use this version
+# if you want fallback to screenshots
+# https://crates.io/crates/xcap 
+# xcap uses DXGI as i know
+# screenshots = "0.8" 
+
+# for config
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+
+# optimal settings for production
+strip = "symbols"
+panic = "abort"
+codegen-units = 1

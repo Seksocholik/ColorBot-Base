@@ -1,0 +1,6 @@
+/target/
+Cargo.lock
+config.json
+**/*.rs.bk
+.zencoder
+.zenflow
