@@ -231,11 +231,11 @@ fn main() {
     
     // example
     if let Err(e) = example_opencv() {
-        println!("Blad OpenCV: {}", e);
+        println!("error opencv: {}", e);
     }
 
     // example
     // let (w, h) = screen_capture::get_screen_size();
-    // println!("Rozdzielczość ekranu: {}x{}", w, h);
+    // println!("screen size {}x{}", w, h);
     
 }
