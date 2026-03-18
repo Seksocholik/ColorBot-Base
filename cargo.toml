@@ -12,6 +12,7 @@ opencv = "0.94.1" # i use this version
 # https://crates.io/crates/xcap 
 # xcap uses DXGI as i know
 # screenshots = "0.8" 
+eframe = "0.27.2" # good ui lib
 
 # for config
 serde = { version = "1.0", features = ["derive"] }
@@ -23,3 +24,5 @@ serde_json = "1.0"
 strip = "symbols"
 panic = "abort"
 codegen-units = 1
+
+[workspace]

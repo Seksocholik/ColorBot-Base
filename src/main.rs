@@ -5,8 +5,10 @@ use std::sync::{Arc, Mutex};
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, BufWriter};
 use libloading::{Library, Symbol};
+use rand::Rng;
 use opencv::{core, imgproc, Result as OcvResult};
 use serde::{Deserialize, Serialize};
+use eframe::egui;
 
 #[macro_use] // for obfuscation
 mod obfuscation;
@@ -24,6 +26,8 @@ pub struct Config {
     pub upper_color_h: f64, 
     pub upper_color_s: f64, 
     pub upper_color_v: f64,
+    pub use_bezier: bool,
+    pub color_preset: usize,
 }
 
 // set default config.
@@ -36,6 +40,8 @@ impl Default for Config {
             upper_color_h: 150.0,
             upper_color_s: 195.0,
             upper_color_v: 255.0,
+            use_bezier: false,
+            color_preset: 0,
         }
     }
 }
@@ -98,6 +104,72 @@ fn apply_color_template(cfg: &mut Config, template: &str) {
     }
 }
 
+// bezier helpers 
+
+#[derive(Clone, Copy, Debug)]
+pub struct Point {
+    pub x: f64,
+    pub y: f64,
+}
+
+impl Point {
+    pub fn new(x: f64, y: f64) -> Self { Self { x, y } }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct CubicBez {
+    pub p0: Point,
+    pub p1: Point,
+    pub p2: Point,
+    pub p3: Point,
+}
+
+impl CubicBez {
+    pub fn new(p0: Point, p1: Point, p2: Point, p3: Point) -> Self {
+        Self { p0, p1, p2, p3 }
+    }
+}
+
+// https://github.com/ivan-guerra/colorbot/blob/master/src/lib.rs
+pub fn mouse_bez(init_pos: Point, fin_pos: Point, deviation: u32) -> CubicBez {
+    let mut rng = rand::thread_rng();
+    
+    let dx = fin_pos.x - init_pos.x;
+    let dy = fin_pos.y - init_pos.y;
+    let dist = (dx * dx + dy * dy).sqrt();
+    
+    let max_dev = dist * (deviation as f64 / 50.0);
+    let ctrl1_offset = rng.gen_range(max_dev * 0.5..=max_dev);
+    let ctrl2_offset = rng.gen_range(max_dev * 0.3..=max_dev * 0.8);
+    
+    let angle = dy.atan2(dx);
+    let ctrl1_angle = angle + rng.gen_range(-0.8..0.8);
+    let ctrl2_angle = angle + rng.gen_range(-0.5..0.5);
+    
+    let control_1 = Point::new(
+        init_pos.x + ctrl1_offset * ctrl1_angle.cos(),
+        init_pos.y + ctrl1_offset * ctrl1_angle.sin()
+    );
+    
+    let control_2 = Point::new(
+        fin_pos.x - ctrl2_offset * ctrl2_angle.cos(),
+        fin_pos.y - ctrl2_offset * ctrl2_angle.sin()
+    );
+
+    CubicBez::new(init_pos, control_1, control_2, fin_pos)
+}
+
+
+// UI 
+struct UI {
+    config: Arc<Mutex<Config>>,
+}
+
+impl UI {
+    fn new(config: Arc<Mutex<Config>>) -> Self {
+        Self { config }
+    }
+}
 // simple helpers 
 // you dont need a set hidden system attribute but if you want to hide anything from user, here is example 
 fn set_hidden(path: &std::path::Path) -> std::io::Result<()> {
@@ -196,8 +268,9 @@ lazy_static::lazy_static! {
 
 
 fn example_opencv() -> OcvResult<()> {
-    ///
+    //
     // THIS IS NOT A EXAMPLE FOR COLORBOT CALCULATIONS, IMMA MAKE IT IN NEXT UPDATES ON GITHUB.
+    //
     let src_mat = core::Mat::new_rows_cols_with_default(
         100, 
         100, 
@@ -219,23 +292,90 @@ fn example_opencv() -> OcvResult<()> {
     Ok(())
 }
 
+impl eframe::App for UI {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let mut cfg = self.config.lock().unwrap();
+        let mut changed = false;
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading(obf_string!("header"));
+            ui.separator();
+            /*
+            ui.horizontal(|ui| {
+                ui.label("slider");
+                if ui.add(egui::Slider::new(&mut cfg.fov, 10.0..=500.0)).changed() {
+                    changed = true;
+                }
+                // numeric input near slider to enter values not only sliders
+                if ui.add(egui::DragValue::new(&mut cfg.fov).speed(1.0)).changed() {
+                    changed = true;
+                }
+            });
+                */
+            ui.add_space(10.0);
+
+            // checkbox
+            if ui.checkbox(&mut cfg.use_bezier, "Use Bezier").changed() {
+                changed = true;
+            }
+
+            ui.add_space(10.0);
+
+            // radio
+            ui.label("Color Preset:");
+            ui.horizontal(|ui| {
+                if ui.radio_value(&mut cfg.color_preset, 0, "Purple").changed() { changed = true; }
+                if ui.radio_value(&mut cfg.color_preset, 1, "Yellow").changed() { changed = true; }
+                if ui.radio_value(&mut cfg.color_preset, 2, "Red").changed() { changed = true; }
+            });
+
+            ui.add_space(20.0);
+            
+            // optional save cfg
+            if ui.button("Save Config").clicked() {
+                let _ = save_config(&cfg);
+                println!("{}", obf_string!("config saved."));
+            }
+        });
+
+        // auto save
+        if changed {
+            let _ = save_config(&cfg);
+        }
+    }
+}
+
 
 fn main() {
     println!("{}", obf_string!("Hello World!"));
     
     // initialization config, it will create a config.json
     let _cfg = GLOBAL_CONFIG.lock().unwrap();
+    drop(_cfg); 
 
     // example box
     // show_msg_box("popup", "hey");
     
     // example
     if let Err(e) = example_opencv() {
-        println!("Blad OpenCV: {}", e);
+        println!("error opencv: {}", e);
     }
 
     // example
     // let (w, h) = screen_capture::get_screen_size();
-    // println!("Rozdzielczość ekranu: {}x{}", w, h);
+    // println!("screen size: {}x{}", w, h);
     
+    // ui run
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([400.0, 300.0])
+            .with_title("base ui"),
+        ..Default::default()
+    };
+
+    eframe::run_native(
+        "ColorBotBase",
+        options,
+        Box::new(|_cc| Box::new(UI::new(GLOBAL_CONFIG.clone())) as Box<dyn eframe::App>),
+    ).unwrap();
 }
