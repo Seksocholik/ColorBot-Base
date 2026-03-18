@@ -131,6 +131,7 @@ impl CubicBez {
 }
 
 // https://github.com/ivan-guerra/colorbot/blob/master/src/lib.rs
+// line 100+
 pub fn mouse_bez(init_pos: Point, fin_pos: Point, deviation: u32) -> CubicBez {
     let mut rng = rand::thread_rng();
     
