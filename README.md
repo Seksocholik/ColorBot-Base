@@ -14,6 +14,11 @@ To build this, you will need:
 * [OpenCV](https://opencv.org/) installed on your system (and `clang` for the `opencv` crate)
 * Also remember to put in enviroments of pc the opencv.
 
+## How to Build?
+* Open CMD and go to Directory "cd {path"
+* <img width="789" height="206" alt="obraz" src="https://github.com/user-attachments/assets/c7f9d55c-a575-4a94-8e8a-5087dbb808ef" />
+* cargo build --release or without --release it will make it in debug in ./target/debug
+
 
 ## Next Updates:
 * Add a Free Logitech Driver ~Pikao
