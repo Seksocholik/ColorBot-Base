@@ -363,7 +363,7 @@ fn main() {
 
     // example
     // let (w, h) = screen_capture::get_screen_size();
-    // println!("screen size: {}x{}", w, h);
+    // println!("Rozdzielczość ekranu: {}x{}", w, h);
     
     // ui run
     let options = eframe::NativeOptions {
